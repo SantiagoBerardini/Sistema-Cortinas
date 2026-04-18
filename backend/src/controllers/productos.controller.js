@@ -112,16 +112,21 @@ exports.update = async (req, res) => {
         sku,
         descripcion,
         tipo_medida,
+        unidad,
         ancho_rollo,
         largo_rollo,
         factor_desperdicio,
+        stock_actual,
         stock_minimo,
         costo_unitario,
-        categoria_id
+        categoria_id,
+        es_producto_base,
+        producto_padre_id
     } = req.body;
 
     if (
         factor_desperdicio !== undefined &&
+        Number(factor_desperdicio) !== 0 &&
         (Number(factor_desperdicio) < 1.0 || Number(factor_desperdicio) > 1.5)
     ) {
         return res.status(400).json({
@@ -136,25 +141,23 @@ exports.update = async (req, res) => {
     }
 
     if (sku !== undefined) {
-        updates.sku =
-            sku && String(sku).trim() !== ''
-                ? String(sku).trim()
-                : null;
+        updates.sku = sku && String(sku).trim() !== '' ? String(sku).trim() : null;
     }
 
     if (descripcion !== undefined) {
-        updates.descripcion =
-            descripcion && String(descripcion).trim() !== ''
-                ? String(descripcion).trim()
-                : null;
+        updates.descripcion = descripcion && String(descripcion).trim() !== '' ? String(descripcion).trim() : null;
     }
 
     if (tipo_medida !== undefined) {
         updates.tipo_medida = tipo_medida;
     }
 
+    if (unidad !== undefined) {
+        updates.unidad = unidad;
+    }
+
     if (ancho_rollo !== undefined) {
-        updates.ancho_rollo = ancho_rollo ? Number(ancho_rollo) : null;
+        updates.ancho_rollo = ancho_rollo === '' || ancho_rollo === null ? null : Number(ancho_rollo);
     }
 
     if (largo_rollo !== undefined) {
@@ -163,6 +166,10 @@ exports.update = async (req, res) => {
 
     if (factor_desperdicio !== undefined) {
         updates.factor_desperdicio = Number(factor_desperdicio);
+    }
+
+    if (stock_actual !== undefined) {
+        updates.stock_actual = Number(stock_actual);
     }
 
     if (stock_minimo !== undefined) {
@@ -177,17 +184,27 @@ exports.update = async (req, res) => {
         updates.categoria_id = Number(categoria_id);
     }
 
+    if (es_producto_base !== undefined) {
+        updates.es_producto_base = Boolean(es_producto_base);
+    }
+
+    if (producto_padre_id !== undefined) {
+        updates.producto_padre_id = producto_padre_id ? Number(producto_padre_id) : null;
+    }
+
     updates.updated_at = new Date().toISOString();
 
     try {
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from('productos')
             .update(updates)
-            .eq('id', req.params.id);
+            .eq('id', req.params.id)
+            .select()
+            .single();
 
         if (error) throw error;
 
-        res.json({ mensaje: 'Producto actualizado' });
+        res.json({ mensaje: 'Producto actualizado', data });
     } catch (err) {
         if (
             err.message?.includes('duplicate key value violates unique constraint') &&
